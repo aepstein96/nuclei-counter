@@ -98,6 +98,7 @@ Note: If you're using Windows, you'll need to:
     - Copy makerepo.sh to your Cursor project folder:
         ```bash
         cp /lustre/fs4/cao_lab/store/aepstein/cursor_projects/makerepo.sh .
+        chmod +x makerepo.sh
         ```
 
 5. Have fun with Cursor!
