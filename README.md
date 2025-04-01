@@ -92,13 +92,13 @@ Note: If you're using Windows, you'll need to:
 4. Set up your Cursor project folder on your remote system:
     - Create a Cursor project folder in your store folder (e.g. /lustre/fs4/cao_lab/store/aepstein/cursor_projects/cursor_template)
     - Create an intermediate files folder in your scratch folder (e.g. /lustre/4/cao_lab/scratch/aepstein/cursor_projects/cursor_intermediate_files)
-    - In your Cursor project folder, create a symlink to the intermediate files folder:
+    - Create a symlink to the intermediate files folder:
         ```bash
         ln -s /path/to/your/intermediate_files_folder intermediate_files
         ```
-    - Copy makerepo.sh to your Cursor project folder:
+    - Create a symlink to makerepo.sh in your Cursor project folder:
         ```bash
-        cp /lustre/fs4/cao_lab/store/aepstein/cursor_projects/makerepo.sh .
+        ln -s /lustre/fs4/cao_lab/store/aepstein/cursor_projects/makerepo.sh .
         chmod +x makerepo.sh
         ```
 
