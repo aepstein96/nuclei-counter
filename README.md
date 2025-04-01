@@ -67,6 +67,7 @@ How to set up your server (do all of this on your local computer--current guide 
     - Click "Connect" for each host
     - You may need to enter your SSH key passphrase if you set one
     - Once connected, you can open folders and files on the remote server
+    - Initially, you can use Cursor for free. After a while, they will make you pay (costs about the same as ChatGPT)
 
 Note: If you're using Windows, you'll need to:
 1. Install OpenSSH for Windows (available in Windows 10 and later)
