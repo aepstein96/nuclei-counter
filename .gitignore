@@ -1,0 +1,15 @@
+raw_data/*
+!raw_data/.gitkeep
+
+results/*
+!results/.gitkeep
+
+*.log
+*.log.*
+*.err
+*.err.*
+*.out
+*.out.*
+
+intermediate_files
+
