@@ -1,2 +1,1 @@
-# cursor_template_new
-A new repository
+Template repository for using Cursor on the RU HPC cluster.

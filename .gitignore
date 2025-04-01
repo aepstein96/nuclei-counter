@@ -4,6 +4,8 @@ raw_data/*
 results/*
 !results/.gitkeep
 
+intermediate_files
+
 *.log
 *.log.*
 *.err
@@ -11,5 +13,5 @@ results/*
 *.out
 *.out.*
 
-intermediate_files
+
 
