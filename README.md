@@ -18,7 +18,7 @@ How to set up your server (do all of this on your local computer--current guide 
         ```bash
         cat ~/.ssh/id_ed25519.pub
         ```
-    - Add the key to both login nodes:
+    - Add the key to whichever login node(s) you want to use:
         ```bash
         # For login04
         ssh-copy-id -i ~/.ssh/id_ed25519.pub username@login04-hpc.rockefeller.edu
