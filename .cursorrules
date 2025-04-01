@@ -26,37 +26,27 @@ Data preprocessing:
 - Manage memory efficiently when dealing with large datasets
 
 Testing code and submitting jobs:
-- You are running on the login node. Use hostname to check if you are on login04 (RHEL 7) or login05 (Rocky 9) as the sbatch commands are different.
+- You should be running on login05 (Rocky 9). Use hostname to check if you are on login04 (RHEL 7) or login05 (Rocky 9) as the sbatch commands are different.
 - Terminate short commands (like cat) with Ctrl+C
-- Run medium or large jobs by submitting sbatch commands. 
-- While a batch job is running, check the queue (with "squeue -u $USER"), log and err files to make sure it is running normally.
-- If a job throws an error, run "scancel <job-number>" to cancel it before correcting the code and rerunning.
+- Run medium or large jobs by submitting sbatch commands, using the absolute path to the script. 
+- Check parameters like number of cpus and adjust based on any previous failures and anticipated requirements.
+- While a batch job is running, check log and err files to make sure it is running normally.
+- If a job throws an error, run "scancel <job-number>" to cancel it before correcting the code and rerunning. If the job is running on login04, you may need to use ssh as well.
 
-Sample sbatch submission commands for CPU jobs the login04/RHEL 7 operating system (replace <my-job> with the job name, and change other parameters as needed). It's suggested not to run GPU jobs on RHEL 7; notify the user about this if it comes up.
-   sbatch --partition=hpc,cao,cao_bigmem \
+Sample sbatch submission commands (replace <my-job> with the job name, and change other parameters as needed):
+
+1. Large CPU job (run on login04/RHEL 7):
+   # From login05 to login04
+   ssh login04-hpc.rockefeller.edu 'sbatch --partition=hpc,cao,cao_bigmem \
           --nodes=1 \
           --ntasks=1 \
           --cpus-per-task=16 \
           --job-name=<my_job> \
-          --output=<my-job>.out \
-          --error=<my_job>.err \
-          --wrap="source ~/.bashrc && conda activate <my_env>> && <my_script.sh>"
+          --output=/path/to/your/script/<my-job>.out \
+          --error=/path/to/your/script/<my_job>.err \
+          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/your/script/<my_script.sh>"'
 
-Sample sbatch submission commands for the login05/Rocky 9 operating system (replace <my-job> with the job name, and change other parameters as needed)
-
-Basic CPU job:
-   sbatch --partition=hpc_l40_a \
-          --time=24:00:00 \
-          --nodes=1 \
-          --ntasks=1 \
-          --cpus-per-task=4 \
-          --mem=128G \
-          --job-name=<my_job> \
-          --output=<my-job>.out \
-          --error=<my_job>.err \
-          --wrap="source ~/.bashrc && conda activate <my_env>> && <my_script.sh>"
-
-GPU job:
+2. GPU job (login05/Rocky 9):
    sbatch --partition=hpc_a10_a \
           --time=24:00:00 \
           --nodes=1 \
@@ -65,16 +55,23 @@ GPU job:
           --mem=128G \
           --gpus=a10:1 \
           --job-name=<my_job> \
-          --output=<my-job>.out \
-          --error=<my_job>.err \
-          --wrap="source ~/.bashrc && conda activate <my_env> && <my_script.sh>"
+          --output=/path/to/your/script/<my-job>.out \
+          --error=/path/to/your/script/<my_job>.err \
+          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/your/script/<my_script.sh>"
 
+Note: When submitting jobs:
+- Always use absolute paths for scripts and output files
+- Ensure all required files and dependencies are accessible from the target login node
+- The job will run on the target login node's compute nodes
+- Job output files will be created on the target login node's filesystem
+- Use the appropriate sbatch parameters for the target login node's partitions
+- It's suggested not to run GPU jobs on login04/RHEL 7
 
 Dependencies:
 - Always use conda environments (ask user for which one to use)
 - NEVER install anything in the base environment
 - If a package is missing, check if using the correct conda environment.
-- If you are using the correct conda environment but the package is still missing, install it using "mamba install -n <env_name> <channel>::<package> -y" if possible. Only use pip as a last resort
+- If you are using the correct conda environment but the package is still missing, install it using "mamba install -n <env_name> <channel>::<package> -y" if possible. Only use pip as a last resort.
 
 Version Control and Collaboration:
 
