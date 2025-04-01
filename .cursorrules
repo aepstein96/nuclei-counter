@@ -31,6 +31,7 @@ Testing code and submitting jobs:
 - Run medium or large jobs by submitting sbatch commands, using the absolute path to the script. 
 - Check parameters like number of cpus and adjust based on any previous failures and anticipated requirements.
 - While a batch job is running, check log and err files to make sure it is running normally.
+- If a job fails, check .cursorrules to make sure you didn't miss anything important.
 - If a job throws an error, run "scancel <job-number>" to cancel it before correcting the code and rerunning. If the job is running on login04, you may need to use ssh as well.
 
 Sample sbatch submission commands (replace <my-job> with the job name, and change other parameters as needed):
