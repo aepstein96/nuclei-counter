@@ -26,7 +26,7 @@ Data preprocessing:
 - Manage memory efficiently when dealing with large datasets
 
 Testing code and submitting jobs:
-- You should be running on login05 (Rocky 9). Use hostname to check if you are on login04 (RHEL 7) or login05 (Rocky 9) as the sbatch commands are different.
+- You should be running on login05 (Rocky 9). Use hostname to check if you are on login04 (RHEL 7) or login05 (Rocky 9).
 - Terminate short commands (like cat) with Ctrl+C
 - Run medium or large jobs by submitting sbatch commands, using the absolute path to the script. 
 - Check parameters like number of cpus and adjust based on any previous failures and anticipated requirements.
@@ -36,15 +36,15 @@ Testing code and submitting jobs:
 Sample sbatch submission commands (replace <my-job> with the job name, and change other parameters as needed):
 
 1. Large CPU job (run on login04/RHEL 7):
-   # From login05 to login04
-   ssh login04-hpc.rockefeller.edu 'sbatch --partition=hpc,cao,cao_bigmem \
+   - If running from login05: add ssh login04-hpc.rockefeller.edu and then enclose the command in single quotes
+   sbatch --partition=hpc,cao,cao_bigmem \
           --nodes=1 \
           --ntasks=1 \
           --cpus-per-task=16 \
           --job-name=<my_job> \
           --output=/path/to/your/script/<my-job>.out \
           --error=/path/to/your/script/<my_job>.err \
-          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/your/script/<my_script.sh>"'
+          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/your/script/<my_script.sh>"
 
 2. GPU job (login05/Rocky 9):
    sbatch --partition=hpc_a10_a \
