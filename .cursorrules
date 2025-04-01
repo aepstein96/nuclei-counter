@@ -10,21 +10,6 @@ Development Principles:
 - Follow best practices for scientific computing in Python, R and Bash
 - Ensure proper error handling and logging. When possible, design pipelines that can save intermediate output and be restarted.
 
-Data loading and saving:
-- Load initial data, unless otherwise specified, from the raw_data folder
-- Save all intermediate files (e.g. AnnData objects, fastq files, sam files) in the intermediate_files folder
-- Save final results (e.g. plots) in the results folder
-- Manually convert between AnnData and monocle/Seurat objects by saving the sparse matrix, .obs, and .var files
-- Use .feather format for extremely large matrices
-- Gzip AnnData objects when saving
-
-Data preprocessing:
-- Use appropriate libraries for single-cell analysis (e.g., scanpy, AnnData, scipy, Seurat, monocle)
-- Use CSR or CSC sparse matrices for single-cell datasets whenever possible. Avoid densifying the matrix
-- When using PyTorch, don't use sparse tensors. Convert sparse matrices into dense tensors in chunks to preserve memory
-- Implement proper quality control and filtering steps (standard for Scanpy: min_cells=3, min_genes=200)
-- Manage memory efficiently when dealing with large datasets
-
 Testing code and submitting jobs:
 - You should be running on login05 (Rocky 9). Use hostname to check if you are on login04 (RHEL 7) or login05 (Rocky 9).
 - Terminate short commands (like cat) with Ctrl+C
@@ -45,28 +30,20 @@ Sample sbatch submission commands (replace <my-job> with the job name, and chang
           --job-name=<my_job> \
           --output=/path/to/your/script/<my-job>.out \
           --error=/path/to/your/script/<my_job>.err \
-          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/your/script/<my_script.sh>"
+          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/my_script.sh"
 
 2. GPU job (login05/Rocky 9):
    sbatch --partition=hpc_a10_a \
           --time=24:00:00 \
           --nodes=1 \
-          --ntasks=1 \ 
+          --ntasks=1 \
           --cpus-per-task=4 \
           --mem=128G \
           --gpus=a10:1 \
           --job-name=<my_job> \
           --output=/path/to/your/script/<my-job>.out \
           --error=/path/to/your/script/<my_job>.err \
-          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/your/script/<my_script.sh>"
-
-Note: When submitting jobs:
-- Always use absolute paths for scripts and output files
-- Ensure all required files and dependencies are accessible from the target login node
-- The job will run on the target login node's compute nodes
-- Job output files will be created on the target login node's filesystem
-- Use the appropriate sbatch parameters for the target login node's partitions
-- It's suggested not to run GPU jobs on login04/RHEL 7
+          --wrap="source ~/.bashrc && conda activate <my_env> && /path/to/my_script.sh"
 
 Dependencies:
 - Always use conda environments (ask user for which one to use)
@@ -74,8 +51,26 @@ Dependencies:
 - If a package is missing, check if using the correct conda environment.
 - If you are using the correct conda environment but the package is still missing, install it using "mamba install -n <env_name> <channel>::<package> -y" if possible. Only use pip as a last resort.
 
-Version Control and Collaboration:
+Project organization:
+- Put scripts in /src and notebooks in /notebooks.
+- Load initial data, unless otherwise specified, from /raw_data
+- Save all intermediate files (e.g. AnnData objects, fastq files, sam files) in /intermediate_files.
+- Save final results (e.g. plots) in the results folder
 
+Data loading and saving:
+- Manually convert between AnnData and monocle/Seurat objects by saving the sparse matrix, .obs, and .var files
+- Use .feather format for extremely large matrices
+- Gzip AnnData objects when saving
+
+Data preprocessing:
+- Use appropriate libraries for single-cell analysis (e.g., scanpy, AnnData, scipy, Seurat, monocle)
+- Use CSR or CSC sparse matrices for single-cell datasets whenever possible. Avoid densifying the matrix
+- When using PyTorch, don't use sparse tensors. Convert sparse matrices into dense tensors in chunks to preserve memory
+- Implement proper quality control and filtering steps (standard for Scanpy: min_cells=3, min_genes=200)
+- Manage memory efficiently when dealing with large datasets
+
+
+Version Control and Collaboration:
 - Use version control (Git) effectively
 - After substantial changes, ask the user if you should make a git commit
 - Write clear commit messages

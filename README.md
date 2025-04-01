@@ -96,10 +96,9 @@ Note: If you're using Windows, you'll need to:
         ```bash
         ln -s /path/to/your/intermediate_files_folder intermediate_files
         ```
-    - Create a symlink to makerepo.sh in your Cursor project folder:
+    - Create a symlink to my makerepo.sh script in your Cursor project folder (or copy it if you want to make your own changes):
         ```bash
-        ln -s /lustre/fs4/cao_lab/store/aepstein/cursor_projects/makerepo.sh .
-        chmod +x makerepo.sh
+        ln -s /lustre/fs4/cao_lab/store/aepstein/cursor_projects/makerepo.sh makerepo.sh
         ```
 
 5. Have fun with Cursor!
