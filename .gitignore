@@ -5,6 +5,7 @@ results/*
 !results/.gitkeep
 
 intermediate_files
+intermediate_files/*
 
 *.log
 *.log.*

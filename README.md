@@ -98,7 +98,7 @@ Note: If you're using Windows, you'll need to:
         ```
     - Create a symlink to my makerepo.sh script in your Cursor project folder (or copy it if you want to make your own changes):
         ```bash
-        ln -s /lustre/fs4/cao_lab/store/aepstein/cursor_projects/makerepo.sh makerepo.sh
+        ln -s /lustre/fs4/cao_lab/store/aepstein/cursor_projects/makerepo.sh .
         ```
 
 5. Have fun with Cursor!
