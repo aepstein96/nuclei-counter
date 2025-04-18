@@ -1,3 +1,26 @@
+import sys
+import os
+import numpy as np
+import pandas as pd
+import tkinter as tk
+from tkinter import ttk, filedialog
+import pickle
+import matplotlib.pyplot as plt
+
+# Import the new modules
+from processing import count_single_image, count_plate_images, recalculate_plate_concentrations
+from processing import calculate_dilutions, format_plate_data, countNuclei
+from visualization import display_image
+from file_io import save_results, load_results
+from config import (
+    SEGMENTATION_DEFAULTS, 
+    IO_DEFAULTS, 
+    DISPLAY_DEFAULTS, 
+    PLATE_PRESETS, 
+    PLATE_DEFAULTS,
+    DILUTION_DEFAULTS
+)
+
 def makeTkVar(master, val):
     if isinstance(val, str):
         return tk.StringVar(master, value=val)
@@ -218,49 +241,39 @@ class MainWindow(tk.Tk):
         self.settings = ttk.Frame(self.settings_buttons)
         
         self.seg_settings = SettingsBox(self.settings, 'Segmentation settings')
-        self.seg_settings.add('final_scale', 2, 'Scale down to (px/µm)', tk.DoubleVar)
-        self.seg_settings.add('template_rad', 4.4, 'Template radius (µm)', tk.DoubleVar)
-        self.seg_settings.add('min_distance', 5, 'Min distance between nuclei (µm)', tk.DoubleVar)
-        self.seg_settings.add('threshold_abs', 0.3, 'Peak threshold (0-1)', tk.DoubleVar)
+        self.seg_settings.add('final_scale', SEGMENTATION_DEFAULTS['final_scale'], 'Scale down to (px/µm)', tk.DoubleVar)
+        self.seg_settings.add('template_rad', SEGMENTATION_DEFAULTS['template_rad'], 'Template radius (µm)', tk.DoubleVar)
+        self.seg_settings.add('min_distance', SEGMENTATION_DEFAULTS['min_distance'], 'Min distance between nuclei (µm)', tk.DoubleVar)
+        self.seg_settings.add('threshold_abs', SEGMENTATION_DEFAULTS['threshold_abs'], 'Peak threshold (0-1)', tk.DoubleVar)
         
         self.io_settings = SettingsBox(self.settings, 'Image file settings')
-        self.io_settings.add('file_code', '.tif', 'Image file code', tk.StringVar)
-        self.io_settings.add('use_img_nums', False, 'Only one image per well', tk.BooleanVar, kind='Checkbutton')
-        self.io_settings.add('img_num_sep', '_', 'Image number separator', tk.StringVar)
-        
-        well_area_urinalysis = 0.111
-        well_area_hemo = 1
-        well_area_96 = np.pi*(6.42/2)**2
-        well_area_384 = 10
-        well_area_96_half = np.pi*(4.4958/2)**2
-        
-        well_vol_urinalysis = 0.011
-        well_vol_hemo = 0.1
+        self.io_settings.add('file_code', IO_DEFAULTS['file_code'], 'Image file code', tk.StringVar)
+        self.io_settings.add('use_img_nums', IO_DEFAULTS['use_img_nums'], 'Only one image per well', tk.BooleanVar, kind='Checkbutton')
+        self.io_settings.add('img_num_sep', IO_DEFAULTS['img_num_sep'], 'Image number separator', tk.StringVar)
         
         self.plate_settings = SettingsBox(self.settings, 'Plate/hemocytometer settings')
-        self.plate_settings.add('rel_paths', True, 'Save relative file paths', tk.BooleanVar, kind='Checkbutton')
-        self.plate_settings.add('well_area', well_area_hemo, 'Well area (mm^2)', tk.DoubleVar)
-        self.plate_settings.add('well_vol', well_vol_hemo, 'Well volume (µL)', tk.DoubleVar)
-        self.plate_settings.add('dil_factor', 2, 'Dilution factor', tk.DoubleVar)
+        self.plate_settings.add('rel_paths', PLATE_DEFAULTS['rel_paths'], 'Save relative file paths', tk.BooleanVar, kind='Checkbutton')
+        self.plate_settings.add('well_area', PLATE_DEFAULTS['well_area'], 'Well area (mm^2)', tk.DoubleVar)
+        self.plate_settings.add('well_vol', PLATE_DEFAULTS['well_vol'], 'Well volume (µL)', tk.DoubleVar)
+        self.plate_settings.add('dil_factor', PLATE_DEFAULTS['dil_factor'], 'Dilution factor', tk.DoubleVar)
         
-        self.plate_settings.addPreset('Hemocytometer', well_area=well_area_hemo, well_vol=well_vol_hemo)
-        self.plate_settings.addPreset('Urinalysis slide', well_area = well_area_urinalysis, well_vol=well_vol_urinalysis)
-        self.plate_settings.addPreset('96-well plate', well_area=well_area_96, well_vol=100)
-        self.plate_settings.addPreset('384-well plate', well_area=well_area_384, well_vol=30)
-        self.plate_settings.addPreset('96-well (half area)', well_area=well_area_96_half, well_vol=50)
+        # Add presets from config
+        for preset_name, preset_values in PLATE_PRESETS.items():
+            self.plate_settings.addPreset(preset_name, **preset_values)
+        
         self.plate_settings.addPresetMenu()
         
         self.display_settings = SettingsBox(self.settings, 'Display/save settings')
-        self.display_settings.add('marker_size', 1, 'Nuclei marker size (px)', tk.DoubleVar)
-        self.display_settings.add('zoom', 100, 'Zoom (%)', tk.IntVar)
-        self.display_settings.add('width', 6, 'Figure width', tk.DoubleVar)
-        self.display_settings.add('height', 6, 'Figure height', tk.DoubleVar)
-        self.display_settings.add('dpi', 180, 'Figure DPI', tk.IntVar)
-        self.display_settings.add('autosave', True, 'Autosave results', tk.BooleanVar, kind='Checkbutton')
+        self.display_settings.add('marker_size', DISPLAY_DEFAULTS['marker_size'], 'Nuclei marker size (px)', tk.DoubleVar)
+        self.display_settings.add('zoom', DISPLAY_DEFAULTS['zoom'], 'Zoom (%)', tk.IntVar)
+        self.display_settings.add('width', DISPLAY_DEFAULTS['width'], 'Figure width', tk.DoubleVar)
+        self.display_settings.add('height', DISPLAY_DEFAULTS['height'], 'Figure height', tk.DoubleVar)
+        self.display_settings.add('dpi', DISPLAY_DEFAULTS['dpi'], 'Figure DPI', tk.IntVar)
+        self.display_settings.add('autosave', DISPLAY_DEFAULTS['autosave'], 'Autosave results', tk.BooleanVar, kind='Checkbutton')
         
         self.dil_settings = SettingsBox(self.settings, 'Dilution calculation')
-        self.dil_settings.add('desired_conc', 250, 'Desired concentration (nuclei/µL)', tk.DoubleVar)
-        self.dil_settings.add('desired_vol', 400, 'Desired volume (µL)', tk.DoubleVar)
+        self.dil_settings.add('desired_conc', DILUTION_DEFAULTS['desired_conc'], 'Desired concentration (nuclei/µL)', tk.DoubleVar)
+        self.dil_settings.add('desired_vol', DILUTION_DEFAULTS['desired_vol'], 'Desired volume (µL)', tk.DoubleVar)
         
         self.seg_settings.grid(row=0, column=0, sticky='nsew')
         self.plate_settings.grid(row=0, column=1, sticky='nsew')
@@ -327,10 +340,12 @@ class MainWindow(tk.Tk):
         print("Calculating dilutions...")
         self.dil_dict = self.dil_settings.getDict()
         
-        self.dil_df = pd.DataFrame()
-        self.dil_df['Nuclei/µL'] = self.plate_concs.iloc[:, -1] #mean if there is one, no mean if there is not
-        self.dil_df['µL sample'] = self.dil_dict['desired_conc'] / self.dil_df['Nuclei/µL'] * self.dil_dict['desired_vol']
-        self.dil_df['µL buffer'] = self.dil_dict['desired_vol'] - self.dil_df['µL sample']
+        # Use the new function from processing.py
+        self.dil_df = calculate_dilutions(
+            self.plate_concs, 
+            self.dil_dict['desired_conc'], 
+            self.dil_dict['desired_vol']
+        )
         self.dilution_table.display(self.dil_df)
         
         if self.display_settings.autosave.get():
@@ -352,8 +367,9 @@ class MainWindow(tk.Tk):
         self.single_img_dir, self.cur_img_name = os.path.split(self.img_path)
         print("Counting nuclei in %s..." % self.cur_img_name)
         
-        # Run segmentation
-        img, scale = readSingleTiff(self.img_path)
+        # Use the new function from processing.py
+        img, scale, self.maxima = count_single_image(self.img_path)
+        # Pass settings to countNuclei through monkey patching
         self.maxima = countNuclei(img, scale, **self.seg_settings.getDict())
         
         self.displayImage()
@@ -370,17 +386,17 @@ class MainWindow(tk.Tk):
             img_name = self.cur_img_name
         
         print("Displaying %s..." % img_name)
-        img, _ = readSingleTiff(img_path)
-        img_fig = plt.figure(figsize=(self.display_settings.width.get(),self.display_settings.height.get()), dpi=self.display_settings.dpi.get())
-        img_fig.suptitle('Segmentation of %s: %d nuclei' % (img_name, np.shape(maxima)[0]))
         
-        img_plot = img_fig.add_subplot(111)
-        img_plot.imshow(img)
-        img_plot.plot(maxima[:,1], maxima[:,0], '.r', markersize=self.display_settings.marker_size.get())
+        # Use the new function from visualization.py
+        display_settings = {
+            'width': self.display_settings.width.get(),
+            'height': self.display_settings.height.get(),
+            'dpi': self.display_settings.dpi.get(),
+            'marker_size': self.display_settings.marker_size.get(),
+            'zoom': self.display_settings.zoom.get()
+        }
         
-        xlim, ylim = cropImg(img, self.display_settings.zoom.get())
-        img_plot.set_xlim(xlim)
-        img_plot.set_ylim(ylim)
+        img_fig = display_image(img_path, maxima, img_name, display_settings)
         img_fig.show()
         
         print("Done")
@@ -401,10 +417,15 @@ class MainWindow(tk.Tk):
         self.io_dict = self.io_settings.getDict()
         self.seg_dict = self.seg_settings.getDict()
         self.plate_dict = self.plate_settings.getDict()
-        self.plate = readPlate(self.plate_dir, self.io_settings.getDict(), self.seg_settings.getDict(), **self.plate_settings.getDict())
         
-        # Calculate concentrations
-        self.plate.insert(2, 'Nuclei/µL', self.plate['Nuclei'] * self.plate_dict['well_area'] / self.plate['Area (mm2)'] / self.plate_dict['well_vol'] * self.plate_dict['dil_factor'])
+        # Use the new function from processing.py
+        self.plate = count_plate_images(
+            self.plate_dir, 
+            self.io_dict, 
+            self.seg_dict, 
+            **self.plate_dict
+        )
+        
         self.displayPlate()
         
         if self.display_settings.autosave.get():
@@ -416,7 +437,10 @@ class MainWindow(tk.Tk):
     def recalculatePlate(self):
         print('Recalculating plate averages/concentrations...')
         self.plate_dict = self.plate_settings.getDict()
-        self.plate['Nuclei/µL'] = self.plate['Nuclei'] / self.plate['Area (mm2)']  * self.plate_dict['well_area'] / self.plate_dict['well_vol'] * self.plate_dict['dil_factor']
+        
+        # Use the new function from processing.py
+        self.plate = recalculate_plate_concentrations(self.plate, self.plate_dict)
+        
         self.displayPlate()
         
         if self.display_settings.autosave.get():
@@ -428,16 +452,11 @@ class MainWindow(tk.Tk):
     def displayPlate(self):
         print("Making table for %s..." % self.plate_dir)
         
-        if self.io_dict['use_img_nums']:
-            self.plate_counts = self.plate[['Nuclei']].copy() #not sure if the copy is needed
-            self.plate_concs = self.plate[['Nuclei/µL']].copy()
-            
-        else: # normally what happens
-            self.plate_counts = self.plate['Nuclei'].unstack()
-            self.plate_counts['Mean'] = self.plate_counts.mean(axis=1)
-
-            self.plate_concs = self.plate['Nuclei/µL'].unstack()
-            self.plate_concs['Mean'] = self.plate_concs.mean(axis=1)
+        # Use the new function from processing.py
+        self.plate_counts, self.plate_concs = format_plate_data(
+            self.plate, 
+            self.io_dict['use_img_nums']
+        )
         
         # Enable saving plate and calculating dilutions
         self.save_plate["state"] = "normal"
@@ -460,46 +479,20 @@ class MainWindow(tk.Tk):
         self.dilution_table.clear()
         
     
-    # NEW: saves all relevant files and info to pickle and CSV
     def saveAll(self):
         print("Saving results...")
-        self.plate.to_pickle(os.path.join(self.plate_dir, "all_data.pickle"))
-        all_dicts = [self.seg_dict, self.io_dict, self.plate_dict, self.dil_dict]
-        pickle.dump(all_dicts, open(os.path.join(self.plate_dir, "settings.pickle"), 'wb'))
         
-        # Make human-readable csv file
-        pd_csv_args = {'encoding':'utf-8', 'line_terminator':'\n'}
-        with open(os.path.join(self.plate_dir, "count_data.csv"), 'w') as f:
-            f.write("Folder path,%s\n\n" % self.plate_dir)
-            
-            f.write("Nuclei counts\n")
-            f.write(self.plate_counts.to_csv(**pd_csv_args) + "\n")
-            f.write("Nuclei/µL\n")
-            f.write(self.plate_concs.to_csv(**pd_csv_args) + "\n")
-            
-            if self.dil_df is not None:
-                f.write("Dilution calculations\n")
-                for key, val in self.dil_dict.items():
-                    f.write("%s,%s\n" % (key, val))
-                    
-                f.write(self.dil_df.to_csv(**pd_csv_args) + "\n")
-            
-            f.write("Segmentation settings\n")
-            for key, val in self.seg_dict.items():
-                f.write("%s,%s\n" % (key, val))
-                
-            f.write("\nI/O settings\n")
-            for key, val in self.io_dict.items():
-                f.write("%s,%s\n" % (key, val))
-                        
-            f.write("\nPlate settings\n")
-            for key, val in self.plate_dict.items():
-                f.write("%s,%s\n" % (key, val))
-                
-            if self.dil_df is not None:            
-                f.write("\nDilution settings\n")
-                
-                    
+        # Use the new function from data_io.py
+        settings_dicts = [self.seg_dict, self.io_dict, self.plate_dict, self.dil_dict]
+        save_results(
+            self.plate_dir,
+            self.plate,
+            settings_dicts,
+            self.plate_counts,
+            self.plate_concs,
+            self.dil_df
+        )
+        
         # Save log
         with open(os.path.join(self.plate_dir, "log.txt"), 'w') as logfile:
             logfile.write(self.log_box.get("1.0",'end-1c'))
@@ -514,8 +507,10 @@ class MainWindow(tk.Tk):
         
         self.plate_dir = plate_dir
         print("Loading %s..." % self.plate_dir)
-        self.plate = pd.read_pickle(os.path.join(self.plate_dir, "all_data.pickle"))
-        self.seg_dict, self.io_dict, self.plate_dict, self.dil_dict = pickle.load(open(os.path.join(self.plate_dir,"settings.pickle"), 'rb'))
+        
+        # Use the new function from data_io.py
+        self.plate, settings_dicts = load_results(self.plate_dir)
+        self.seg_dict, self.io_dict, self.plate_dict, self.dil_dict = settings_dicts
         
         self.seg_settings.setDict(self.seg_dict)
         self.io_settings.setDict(self.io_dict)
