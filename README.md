@@ -12,7 +12,7 @@ The core of NucleiCounter is that it assumes nuclei are roughly circular, and pe
 * Finding peaks in the quality of template matching (which should occur at the center of the nucleus)
 The result is that it can accurately count DAPI-stained nuclei. Concentrations can then be calculated if the chamber area and volume are known. TIFF metadata in input images is used to determine image scale for calculating concentrations.
 
-![Example of nuclei detection](docs/example_image.png) ![Detected nuclei](docs/example_segmented_image.png)
+<img src="docs/example_image.png" width="45%" alt="Example of nuclei detection" /> <img src="docs/example_segmented_image.png" width="45%" alt="Detected nuclei" />
 
 NucleiCounter is intended to be used through its GUI (see below), which provides an easy way to use the software and access to dilution counting. 
 
