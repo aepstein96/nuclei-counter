@@ -1,11 +1,10 @@
 import sys
 import os
-import numpy as np
 import pandas as pd
 import tkinter as tk
 from tkinter import ttk, filedialog
-import pickle
 import matplotlib.pyplot as plt
+from nucleicounter import __version__
 
 # Import the new modules
 from .processing import countImage, readPlate, recalculatePlateConcentrations, calculateDilutions, formatPlateData
@@ -323,7 +322,7 @@ class MainWindow(tk.Tk):
         
         # Assembling bottom labels
         ttk.Label(self, text="Alexander Epstein, Cao Laboratory, The Rockefeller University").pack(side='bottom', anchor='e')
-        ttk.Label(self, text="NucleiCounter (updated 4/29/2025)").pack(side='bottom', anchor='e')
+        ttk.Label(self, text="NucleiCounter (version %s)" % __version__).pack(side='bottom', anchor='e')
         self.log_box.pack(side='bottom', fill='x')
         
         self.settings_buttons.pack(side='left', fill='y')

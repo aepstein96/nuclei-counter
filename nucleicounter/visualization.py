@@ -25,6 +25,8 @@ def cropImg(img, zoom_percentage):
     
     return (x_min, x_max), (y_min, y_max)
 
+# Display image with maxima points
+# Note: the image may be flipped vertically relative to the original image. This should not change any results.
 def displayImage(img_path, maxima, img_name=None, display_settings=DISPLAY_DEFAULTS):
     if img_name is None:
         img_name = os.path.basename(img_path)

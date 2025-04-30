@@ -9,8 +9,8 @@ SEGMENTATION_SETTINGS = {
 # IO settings
 IO_SETTINGS = {
     'file_code': {'default': '.tif', 'description': 'Image file code', 'type': 'string'},
-    'image_labels': {'default': 'image_name', 'description': 'Numbering method', 'type': 'list', 'options': ['nums_from_file', 'image_name', 'arbitrary_nums']},
-    'img_num_sep': {'default': '_', 'description': 'Image number separator', 'type': 'string'},
+    'image_labels': {'default': 'nums_from_file', 'description': 'Numbering method', 'type': 'list', 'options': ['nums_from_file', 'image_name', 'arbitrary_nums']},
+    'img_num_sep': {'default': '_', 'description': 'Image number separator (for nums_from_file)', 'type': 'string'},
     'use_multithreading': {'default': False, 'description': 'Use multithreading', 'type': 'boolean'},
     'max_threads': {'default': 0, 'description': 'Max threads (0 = all)', 'type': 'int'},
     'max_depth': {'default': 3, 'description': 'Max depth of subfolders to search', 'type': 'int'}
