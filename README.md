@@ -122,4 +122,6 @@ The software saves results in several formats:
 - CSV file with nuclei counts, concentrations, and dilution calculations
 - Optional segmented images showing detected nuclei
 
-## License: GPL-3 
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see [LICENSE](LICENSE) for details.
