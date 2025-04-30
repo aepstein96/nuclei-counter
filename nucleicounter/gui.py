@@ -8,17 +8,16 @@ import pickle
 import matplotlib.pyplot as plt
 
 # Import the new modules
-from processing import count_single_image, count_plate_images, recalculate_plate_concentrations
-from processing import calculate_dilutions, format_plate_data, countNuclei
-from visualization import display_image
-from file_io import save_results, load_results
-from config import (
-    SEGMENTATION_DEFAULTS, 
-    IO_DEFAULTS, 
-    DISPLAY_DEFAULTS, 
-    PLATE_PRESETS, 
-    PLATE_DEFAULTS,
-    DILUTION_DEFAULTS
+from .processing import countImage, readPlate, recalculatePlateConcentrations, calculateDilutions, formatPlateData
+from .visualization import displayImage
+from .file_io import saveResults, loadResults
+from .config import (
+    SEGMENTATION_SETTINGS,
+    IO_SETTINGS,
+    DISPLAY_SETTINGS,
+    PLATE_PRESETS,
+    PLATE_SETTINGS,
+    DILUTION_SETTINGS
 )
 
 def makeTkVar(master, val):
@@ -93,6 +92,7 @@ class Table(ttk.Frame):
         
     def recursiveInsert(self, df, parent=''):
         if isinstance(df.index, pd.MultiIndex):
+            print("Found multi-index")
             for folder in df.index.levels[0]:
                 new_parent = self.tree.insert(parent, "end", text=folder, values=['']*len(self.tree['columns']), open=True)
                 self.recursiveInsert(df.loc[folder], new_parent)
@@ -100,7 +100,7 @@ class Table(ttk.Frame):
             for index, row in df.iterrows():
                 self.tree.insert(parent, "end", text=index, values=[round(x, self.decimals) for x in row])
     
-    # NEW: heirarchical display
+    # Heirarchical display for additional levels of recursion
     def display(self, data):
         self.tree.delete(*self.tree.get_children())
         colnames = data.columns.values
@@ -125,7 +125,6 @@ class Table(ttk.Frame):
         
 
 class SettingsBox(ttk.Frame):
-    
     def __init__(self, parent, title=None, entry_width=5):
         ttk.Frame.__init__(self, parent, borderwidth=2)
         
@@ -138,45 +137,48 @@ class SettingsBox(ttk.Frame):
         self.entry_width = entry_width
         self.dict = {}
         self.presets_dict = {}
-                
-    def add(self, name, default, text=None, createVar=makeTkVar, kind='Entry', options=None, **kwargs):
-        
-        # Create TkVar and append to self
-        var = createVar(self, default)
-        setattr(self, name, var)
-        
-        self.dict[name] = var
     
-        # Grid the label and entry field
-        if text is None:
-            text = name
-        
-        ttk.Label(master=self, text=text).grid(row=self.row, column=0, sticky='nw')
-        
-        if kind == 'Entry':
-            new_box = ttk.Entry(master=self, textvariable=var, width=self.entry_width, **kwargs)
+    # Add settings from a config dictionary
+    def addFromConfig(self, settings_dict):
+        for name, setting in settings_dict.items():
+            # Convert type string to appropriate TkVar
+            if setting['type'] == 'string':
+                var = tk.StringVar(self, value=setting['default'])
+            elif setting['type'] == 'double':
+                var = tk.DoubleVar(self, value=setting['default'])
+            elif setting['type'] == 'int':
+                var = tk.IntVar(self, value=setting['default'])
+            elif setting['type'] == 'boolean':
+                var = tk.BooleanVar(self, value=setting['default'])
+            elif setting['type'] == 'list':
+                var = tk.StringVar(self, value=setting['default'])
+            else:
+                raise ValueError(f"Unknown type {setting['type']} for setting {name}")
             
-        elif kind == 'OptionMenu':
-            new_box = ttk.OptionMenu(self, var, default, *options, **kwargs)
+            setattr(self, name, var)
+            self.dict[name] = var
             
-        elif kind == 'Checkbutton':
-            new_box = ttk.Checkbutton(self, variable=var, **kwargs)
+            # Grid the label and entry field
+            ttk.Label(master=self, text=setting['description']).grid(row=self.row, column=0, sticky='nw')
             
-        new_box.grid(row=self.row, column=1, sticky='ne')
-        self.row += 1
-    
+            if setting['type'] == 'boolean':
+                new_box = ttk.Checkbutton(self, variable=var)
+            elif setting['type'] == 'list':
+                new_box = ttk.OptionMenu(self, var, setting['default'], *setting['options'])
+            else:
+                new_box = ttk.Entry(master=self, textvariable=var, width=self.entry_width)
+            
+            new_box.grid(row=self.row, column=1, sticky='ne')
+            self.row += 1
     
     def addButton(self, *args, **kwargs):
         ttk.Button(master=self, *args, **kwargs).grid(row=self.row, column=0, columnspan=2, sticky='nsew')
         self.row += 1
     
-
     def addPreset(self, name, **preset_dict):
         self.presets_dict[name] = preset_dict
-        
     
     def addPresetMenu(self, text='Presets', options=None, default=None, **kwargs):
-        
         if options is None:
             options = list(self.presets_dict.keys())
             
@@ -189,18 +191,22 @@ class SettingsBox(ttk.Frame):
         preset_menu = ttk.OptionMenu(self, var, default, *list(self.presets_dict.keys()), command=self.updateFromPreset, **kwargs)
         preset_menu.grid(row=self.row, column=1, sticky='ne')
         self.row += 1
-        
+    
+    # Returns a dictionary of the settings in the SettingsBox
     def getDict(self):
         return {name: var.get() for name, var in self.dict.items()}
     
+    # Updates the values of the settings in the SettingsBox from a dictionary
+    # A subset of values can be updated by passing a dictionary with only the desired values
     def setDict(self, in_dict):
         for var, val in in_dict.items():
             self.dict[var].set(val)
-            
+    
+    # Updates the values of the settings in the SettingsBox from a preset
     def updateFromPreset(self, preset):
         self.setDict(self.presets_dict[preset])
 
-    
+
 # Redirects stdout, stderr to Tkinter text box. Source: https://stackoverflow.com/questions/12351786/how-to-redirect-print-statements-to-tkinter-text-widget
 class TextRedirector:
     def __init__(self, widget, tag="stdout"):
@@ -215,9 +221,7 @@ class TextRedirector:
 
 
 class MainWindow(tk.Tk):
-    
-    
-    def __init__(self):
+    def __init__(self, seg_settings=SEGMENTATION_SETTINGS, io_settings=IO_SETTINGS, plate_presets=PLATE_PRESETS, plate_settings=PLATE_SETTINGS, display_settings=DISPLAY_SETTINGS, dil_settings=DILUTION_SETTINGS):
         tk.Tk.__init__(self)
         
         # Preserving stdout and stderr from sys so they can be restored when the window is closed
@@ -229,7 +233,7 @@ class MainWindow(tk.Tk):
         
         self.single_img_dir = None
         self.plate_dir = None
-        
+        self.cur_img_name = None
         self.plate = None
         self.plate_counts = None
         self.plate_concs = None
@@ -241,39 +245,25 @@ class MainWindow(tk.Tk):
         self.settings = ttk.Frame(self.settings_buttons)
         
         self.seg_settings = SettingsBox(self.settings, 'Segmentation settings')
-        self.seg_settings.add('final_scale', SEGMENTATION_DEFAULTS['final_scale'], 'Scale down to (px/µm)', tk.DoubleVar)
-        self.seg_settings.add('template_rad', SEGMENTATION_DEFAULTS['template_rad'], 'Template radius (µm)', tk.DoubleVar)
-        self.seg_settings.add('min_distance', SEGMENTATION_DEFAULTS['min_distance'], 'Min distance between nuclei (µm)', tk.DoubleVar)
-        self.seg_settings.add('threshold_abs', SEGMENTATION_DEFAULTS['threshold_abs'], 'Peak threshold (0-1)', tk.DoubleVar)
+        self.seg_settings.addFromConfig(seg_settings)
         
         self.io_settings = SettingsBox(self.settings, 'Image file settings')
-        self.io_settings.add('file_code', IO_DEFAULTS['file_code'], 'Image file code', tk.StringVar)
-        self.io_settings.add('use_img_nums', IO_DEFAULTS['use_img_nums'], 'Only one image per well', tk.BooleanVar, kind='Checkbutton')
-        self.io_settings.add('img_num_sep', IO_DEFAULTS['img_num_sep'], 'Image number separator', tk.StringVar)
+        self.io_settings.addFromConfig(io_settings)
         
         self.plate_settings = SettingsBox(self.settings, 'Plate/hemocytometer settings')
-        self.plate_settings.add('rel_paths', PLATE_DEFAULTS['rel_paths'], 'Save relative file paths', tk.BooleanVar, kind='Checkbutton')
-        self.plate_settings.add('well_area', PLATE_DEFAULTS['well_area'], 'Well area (mm^2)', tk.DoubleVar)
-        self.plate_settings.add('well_vol', PLATE_DEFAULTS['well_vol'], 'Well volume (µL)', tk.DoubleVar)
-        self.plate_settings.add('dil_factor', PLATE_DEFAULTS['dil_factor'], 'Dilution factor', tk.DoubleVar)
+        self.plate_settings.addFromConfig(plate_settings)
         
         # Add presets from config
-        for preset_name, preset_values in PLATE_PRESETS.items():
+        for preset_name, preset_values in plate_presets.items():
             self.plate_settings.addPreset(preset_name, **preset_values)
         
         self.plate_settings.addPresetMenu()
         
         self.display_settings = SettingsBox(self.settings, 'Display/save settings')
-        self.display_settings.add('marker_size', DISPLAY_DEFAULTS['marker_size'], 'Nuclei marker size (px)', tk.DoubleVar)
-        self.display_settings.add('zoom', DISPLAY_DEFAULTS['zoom'], 'Zoom (%)', tk.IntVar)
-        self.display_settings.add('width', DISPLAY_DEFAULTS['width'], 'Figure width', tk.DoubleVar)
-        self.display_settings.add('height', DISPLAY_DEFAULTS['height'], 'Figure height', tk.DoubleVar)
-        self.display_settings.add('dpi', DISPLAY_DEFAULTS['dpi'], 'Figure DPI', tk.IntVar)
-        self.display_settings.add('autosave', DISPLAY_DEFAULTS['autosave'], 'Autosave results', tk.BooleanVar, kind='Checkbutton')
+        self.display_settings.addFromConfig(display_settings)
         
         self.dil_settings = SettingsBox(self.settings, 'Dilution calculation')
-        self.dil_settings.add('desired_conc', DILUTION_DEFAULTS['desired_conc'], 'Desired concentration (nuclei/µL)', tk.DoubleVar)
-        self.dil_settings.add('desired_vol', DILUTION_DEFAULTS['desired_vol'], 'Desired volume (µL)', tk.DoubleVar)
+        self.dil_settings.addFromConfig(dil_settings)
         
         self.seg_settings.grid(row=0, column=0, sticky='nsew')
         self.plate_settings.grid(row=0, column=1, sticky='nsew')
@@ -282,8 +272,8 @@ class MainWindow(tk.Tk):
         self.dil_settings.grid(row=2, column=0, sticky='nsew')
         
         # Laying out buttons
-        self.buttons = ttk.Frame(self.settings_buttons)
-        self.buttons2 = ttk.Frame(self.settings_buttons)
+        self.buttons = ttk.Frame(self.settings_buttons) # top part
+        self.buttons2 = ttk.Frame(self.settings_buttons) # bottom part
         
         self.count_img = ttk.Button(self.buttons, text='Count single image', command=self.segmentImage)
         self.display_img = ttk.Button(self.buttons, text='Display single image', command=self.displayImage, state='disabled')
@@ -292,7 +282,7 @@ class MainWindow(tk.Tk):
         self.load_plate = ttk.Button(self.buttons2, text='Load saved data', command=self.loadAll)
         self.redo_tables = ttk.Button(self.buttons2, text='Recalculate plate avgs/concentrations', command=self.recalculatePlate)
         self.calculate_dilutions = ttk.Button(self.buttons2, text='Calculate dilutions', command = self.calculateDilutions, state='disabled')
-        #self.save_log = ttk.Button(self.buttons2, text='Save log', command = self.saveLog)
+        self.save_log = ttk.Button(self.buttons2, text='Save log', command = self.saveLog)
         
         self.count_img.pack(side='left')
         self.display_img.pack(side='left')
@@ -301,7 +291,7 @@ class MainWindow(tk.Tk):
         self.load_plate.pack(side='left')
         self.redo_tables.pack(side='left')
         self.calculate_dilutions.pack(side='left')
-        #self.save_log.pack(side='left')
+        self.save_log.pack(side='left')
         
         # Laying out tables  
         
@@ -318,7 +308,10 @@ class MainWindow(tk.Tk):
         self.dilution_table.pack()
 
         # Laying out message box
-        self.log_box = tk.Text(self, height=10, state='disabled', bg='white smoke')
+        self.log_box = tk.Text(self, height=10, state='disabled', bg='#f0f0f0', fg='#000000')
+        # Configure tag colors for stdout and stderr
+        self.log_box.tag_configure("stdout", foreground="#000000")
+        self.log_box.tag_configure("stderr", foreground="#CC0000")
         sys.stdout = TextRedirector(self.log_box, "stdout")
         sys.stderr = TextRedirector(self.log_box, "stderr")
         
@@ -328,9 +321,9 @@ class MainWindow(tk.Tk):
         self.buttons2.pack(side='bottom', anchor='s')
         self.buttons.pack(side='bottom', anchor='s')
         
-
+        # Assembling bottom labels
         ttk.Label(self, text="Alexander Epstein, Cao Laboratory, The Rockefeller University").pack(side='bottom', anchor='e')
-        ttk.Label(self, text="NucleiCounter (updated 1/13/2022)").pack(side='bottom', anchor='e')
+        ttk.Label(self, text="NucleiCounter (updated 4/29/2025)").pack(side='bottom', anchor='e')
         self.log_box.pack(side='bottom', fill='x')
         
         self.settings_buttons.pack(side='left', fill='y')
@@ -340,8 +333,7 @@ class MainWindow(tk.Tk):
         print("Calculating dilutions...")
         self.dil_dict = self.dil_settings.getDict()
         
-        # Use the new function from processing.py
-        self.dil_df = calculate_dilutions(
+        self.dil_df = calculateDilutions(
             self.plate_concs, 
             self.dil_dict['desired_conc'], 
             self.dil_dict['desired_vol']
@@ -358,19 +350,16 @@ class MainWindow(tk.Tk):
         
         # Get image path and name
         img_path = filedialog.askopenfilename(initialdir=self.single_img_dir, initialfile=self.cur_img_name, title="Select image", filetypes = [("TIFF", "*.tiff *.tif")])
-
-        self.update()
         if not img_path:
-            return 0
+            return
         
+        self.update()
         self.img_path = img_path
         self.single_img_dir, self.cur_img_name = os.path.split(self.img_path)
         print("Counting nuclei in %s..." % self.cur_img_name)
         
         # Use the new function from processing.py
-        img, scale, self.maxima = count_single_image(self.img_path)
-        # Pass settings to countNuclei through monkey patching
-        self.maxima = countNuclei(img, scale, **self.seg_settings.getDict())
+        img, area, self.maxima = countImage(self.img_path, self.seg_settings.getDict())
         
         self.displayImage()
         self.display_img['state'] = 'normal'
@@ -387,7 +376,6 @@ class MainWindow(tk.Tk):
         
         print("Displaying %s..." % img_name)
         
-        # Use the new function from visualization.py
         display_settings = {
             'width': self.display_settings.width.get(),
             'height': self.display_settings.height.get(),
@@ -396,9 +384,12 @@ class MainWindow(tk.Tk):
             'zoom': self.display_settings.zoom.get()
         }
         
-        img_fig = display_image(img_path, maxima, img_name, display_settings)
+        img_fig = displayImage(img_path, maxima, img_name, display_settings)
         img_fig.show()
         
+        if self.display_settings.autosave.get():
+            img_fig.savefig(os.path.join(os.path.dirname(img_path), img_name + "_segmented.png"))
+            
         print("Done")
         
         
@@ -408,7 +399,7 @@ class MainWindow(tk.Tk):
         plate_dir = filedialog.askdirectory(initialdir=self.plate_dir, title="Select parent folder for plate images")
         
         if not plate_dir:
-            return 0
+            return
         
         self.plate_dir = plate_dir
         print("Reading %s..." % self.plate_dir)
@@ -418,12 +409,11 @@ class MainWindow(tk.Tk):
         self.seg_dict = self.seg_settings.getDict()
         self.plate_dict = self.plate_settings.getDict()
         
-        # Use the new function from processing.py
-        self.plate = count_plate_images(
+        self.plate = readPlate(
             self.plate_dir, 
             self.io_dict, 
             self.seg_dict, 
-            **self.plate_dict
+            self.plate_dict
         )
         
         self.displayPlate()
@@ -439,7 +429,7 @@ class MainWindow(tk.Tk):
         self.plate_dict = self.plate_settings.getDict()
         
         # Use the new function from processing.py
-        self.plate = recalculate_plate_concentrations(self.plate, self.plate_dict)
+        self.plate = recalculatePlateConcentrations(self.plate, self.plate_dict)
         
         self.displayPlate()
         
@@ -453,10 +443,7 @@ class MainWindow(tk.Tk):
         print("Making table for %s..." % self.plate_dir)
         
         # Use the new function from processing.py
-        self.plate_counts, self.plate_concs = format_plate_data(
-            self.plate, 
-            self.io_dict['use_img_nums']
-        )
+        self.plate_counts, self.plate_concs = formatPlateData(self.plate)
         
         # Enable saving plate and calculating dilutions
         self.save_plate["state"] = "normal"
@@ -481,15 +468,13 @@ class MainWindow(tk.Tk):
     
     def saveAll(self):
         print("Saving results...")
-        
-        # Use the new function from data_io.py
         settings_dicts = [self.seg_dict, self.io_dict, self.plate_dict, self.dil_dict]
-        save_results(
+        saveResults(
             self.plate_dir,
             self.plate,
-            settings_dicts,
             self.plate_counts,
             self.plate_concs,
+            settings_dicts,
             self.dil_df
         )
         
@@ -503,13 +488,13 @@ class MainWindow(tk.Tk):
         plate_dir = filedialog.askdirectory(initialdir=self.plate_dir, title="Select plate directory")
         
         if not plate_dir:
-            return 0
+            return
         
         self.plate_dir = plate_dir
         print("Loading %s..." % self.plate_dir)
         
         # Use the new function from data_io.py
-        self.plate, settings_dicts = load_results(self.plate_dir)
+        self.plate, settings_dicts = loadResults(self.plate_dir)
         self.seg_dict, self.io_dict, self.plate_dict, self.dil_dict = settings_dicts
         
         self.seg_settings.setDict(self.seg_dict)
@@ -538,3 +523,19 @@ class MainWindow(tk.Tk):
         sys.stderr = self.stderr_old
         self.destroy()
         self.quit()
+        
+    def saveLog(self):
+        log_file = filedialog.asksaveasfilename(
+            initialdir=self.plate_dir if self.plate_dir else os.getcwd(),
+            title="Save Log File",
+            defaultextension=".txt",
+            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+        )
+        
+        if not log_file:
+            return
+            
+        print(f"Saving log to {log_file}...")
+        with open(log_file, 'w') as logfile:
+            logfile.write(self.log_box.get("1.0", 'end-1c'))
+        print("Log saved successfully")

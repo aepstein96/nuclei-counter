@@ -1,18 +1,13 @@
-raw_data/*
-!raw_data/.gitkeep
-
-results/*
-!results/.gitkeep
-
-intermediate_files
-intermediate_files/*
-
 *.log
 *.log.*
 *.err
 *.err.*
 *.out
 *.out.*
+*.egg-info
 
+__pycache__/*
+*.pyc
+*.DS_Store
 
 

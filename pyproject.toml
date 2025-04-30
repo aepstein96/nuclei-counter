@@ -1,7 +1,20 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nuclei-counter"
-version = "0.1.0" 
+name = "nucleicounter"
+version = "2024.04.29"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "scikit-image",
+    "opencv-python",
+    "tifffile",
+    "tk"
+] 
+
+[tool.setuptools]
+packages = ["nucleicounter"]

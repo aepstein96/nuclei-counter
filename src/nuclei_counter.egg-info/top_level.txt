@@ -1,7 +1,0 @@
-__main__
-cli
-config
-gui
-io
-processing
-visualization
