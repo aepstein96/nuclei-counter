@@ -97,12 +97,14 @@ NucleiCounter has several configurable parameters for segmentation, I/O, display
 - `dpi`: Figure DPI (default: 180)
 - `autosave`: Automatically save results (default: True)
 
-### Plate settings (for concentration calculation)
+### Hemocytometer/plate settings (for concentration calculation)
 
 - `rel_paths`: Save relative file paths (default: True)
 - `well_area`: Well area (mm²)
 - `well_vol`: Well volume (µL)
 - `dil_factor`: Dilution factor
+
+Note: the default preset is for a [Bulldog Bio 4-Chip Hemocytometer](https://www.bulldog-bio.com/product/4-chip-disposable-hemocytometer/). If using a different type of slide, you will need to change the well area and volume accordingly.
 
 ### Dilution settings
 
